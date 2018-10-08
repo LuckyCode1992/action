@@ -23,8 +23,7 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 import android.content.Context.POWER_SERVICE
 import android.os.PowerManager
-
-
+import android.widget.Toast
 
 
 class MainActivity : AppCompatActivity() {
@@ -34,9 +33,15 @@ class MainActivity : AppCompatActivity() {
     var kaoqingY = 780
     var dakaX = 340
     var dakaY = 480
+    var dakaX_xiaban = 340
+    var dakaY_xiaban = 830
     var date_string = "2018-09-30 08:30"
+    var date_string_xiaban = "2018-09-30 18:01"
     var disposable: Disposable? = null
+    var disposableXiaban: Disposable? = null
+
     var dataLong: Long? = null
+    var dataLongXiaban: Long? = null
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,13 +56,20 @@ class MainActivity : AppCompatActivity() {
             kaoqingY = et_kaoqing_y.text.toString().toInt()
             dakaX = et_daka_x.text.toString().toInt()
             dakaY = et_daka_y.text.toString().toInt()
+            dakaX_xiaban = et_daka_x_xiaban.text.toString().toInt()
+            dakaY_xiaban = et_daka_y_xiaban.text.toString().toInt()
 
             date_string = et_year.text.toString() + "-" + et_month.text.toString() + "-" + et_day.text.toString() + " " + et_hour.text.toString() + ":" + et_min.text.toString()
 
+            date_string_xiaban = et_year.text.toString() + "-" + et_month.text.toString() + "-" + et_day.text.toString() + " " + et_hour_xiaban.text.toString() + ":" + et_min_xiaban.text.toString()
 
             dataLong = string2Long(date_string)
 
+            dataLongXiaban = string2Long(date_string_xiaban)
+
             startLunxun()
+
+            Toast.makeText(this, "设置成功，上班打卡时间：$date_string  下班打卡时间：$date_string_xiaban", Toast.LENGTH_SHORT).show()
         }
 
 
@@ -65,7 +77,7 @@ class MainActivity : AppCompatActivity() {
 
     fun startLunxun() {
         if (disposable == null) {
-            disposable = Observable.interval(1, TimeUnit.SECONDS)
+            disposable = Observable.interval(5, TimeUnit.SECONDS)
                     .subscribeOn(Schedulers.newThread())
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe {
@@ -78,20 +90,48 @@ class MainActivity : AppCompatActivity() {
                     }
         }
 
+        if (disposableXiaban == null) {
+            disposableXiaban = Observable.interval(5, TimeUnit.SECONDS)
+                    .subscribeOn(Schedulers.newThread())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe {
+                        dataLongXiaban?.let {
+                            if (dataLongXiaban!! - System.currentTimeMillis() <= 0) {
+                                wakeUpXiban()
+                            }
+                        }
+
+                    }
+        }
+
     }
 
-     fun wakeUp() {
-         // 获取电源管理器对象
-         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-         val screenOn = pm.isScreenOn
-         if (!screenOn) {
-             // 获取PowerManager.WakeLock对象,后面的参数|表示同时传入两个值,最后的是LogCat里用的Tag
-             val wl = pm.newWakeLock(
-                     PowerManager.ACQUIRE_CAUSES_WAKEUP or PowerManager.SCREEN_BRIGHT_WAKE_LOCK, "bright")
-             wl.acquire(10000) // 点亮屏幕
-             wl.release() // 释放
-         }
-         startTask2Dingding()
+    fun wakeUpXiban() {
+        // 获取电源管理器对象
+        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+        val screenOn = pm.isScreenOn
+        if (!screenOn) {
+            // 获取PowerManager.WakeLock对象,后面的参数|表示同时传入两个值,最后的是LogCat里用的Tag
+            val wl = pm.newWakeLock(
+                    PowerManager.ACQUIRE_CAUSES_WAKEUP or PowerManager.SCREEN_BRIGHT_WAKE_LOCK, "bright")
+            wl.acquire(10000) // 点亮屏幕
+            wl.release() // 释放
+        }
+        startTask2DingdingXiaban()
+    }
+
+    fun wakeUp() {
+        // 获取电源管理器对象
+        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+        val screenOn = pm.isScreenOn
+        if (!screenOn) {
+            // 获取PowerManager.WakeLock对象,后面的参数|表示同时传入两个值,最后的是LogCat里用的Tag
+            val wl = pm.newWakeLock(
+                    PowerManager.ACQUIRE_CAUSES_WAKEUP or PowerManager.SCREEN_BRIGHT_WAKE_LOCK, "bright")
+            wl.acquire(10000) // 点亮屏幕
+            wl.release() // 释放
+        }
+        startTask2Dingding()
     }
 
     fun string2Long(date_string: String): Long {
@@ -99,6 +139,25 @@ class MainActivity : AppCompatActivity() {
         val date = formatter.parse(date_string)
         val time = date.time
         return time
+    }
+
+    fun startTask2DingdingXiaban() {
+
+        Handler().postDelayed({
+            start2DingXiaban()
+        }, 0)
+        Handler().postDelayed({
+            exe("input tap $workX $workY")
+            Log.d("dingdingrizhi", "工作")
+        }, 15000)
+        Handler().postDelayed({
+            exe("input tap $kaoqingX $kaoqingY")
+            Log.d("dingdingrizhi", "考勤打卡")
+        }, 18000)
+        Handler().postDelayed({
+            exe("input tap $dakaX_xiaban $dakaY_xiaban")
+            Log.d("dingdingrizhi", "打卡下班")
+        }, 25000)
     }
 
     fun startTask2Dingding() {
@@ -120,6 +179,15 @@ class MainActivity : AppCompatActivity() {
         }, 25000)
     }
 
+
+    fun start2DingXiaban() {
+        var intent = Intent()
+        // 这里的packname就是从上面得到的目标apk的包名
+        intent = packageManager.getLaunchIntentForPackage("com.alibaba.android.rimet") //钉钉包名
+        startActivity(intent)
+        disposableXiaban?.dispose()
+        disposableXiaban = null
+    }
 
     fun start2Ding() {
         var intent = Intent()
@@ -152,5 +220,7 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         disposable?.dispose()
         disposable = null
+        disposableXiaban?.dispose()
+        disposableXiaban = null
     }
 }
